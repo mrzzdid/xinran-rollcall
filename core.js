@@ -24,9 +24,28 @@ export function parseNames(text){
   }
   return students;
 }
+export function studentMatchesFilter(student,filter='all'){
+  if(filter==='A'||filter==='B')return Array.isArray(student.groups)&&student.groups.includes(filter);
+  return filter==='all'||student.gender===filter;
+}
+export function assignGroups(students,groupAText='',groupBText=''){
+  const result=students.map(s=>({...s,groups:[]}));
+  for(const[group,text]of[['A',groupAText],['B',groupBText]]){
+    for(const entry of parseNames(text)){
+      const numbered=entry.name.match(/^#(\d+)(?:\s+(.+))?$/);
+      let matches;
+      if(numbered){const student=result[Number(numbered[1])-1];matches=student&&(!numbered[2]||student.name===numbered[2].trim())?[student]:[];}
+      else matches=result.filter(s=>s.name===entry.name);
+      if(!matches.length)throw new Error(`${group} 组的「${entry.name}」不在上方学生名单中，请先添加到总名单或检查姓名。`);
+      if(matches.length>1)throw new Error(`总名单中有多位「${entry.name}」，请在 ${group} 组中用「#序号 ${entry.name}」指定。`);
+      if(!matches[0].groups.includes(group))matches[0].groups.push(group);
+    }
+  }
+  return result;
+}
 export function eligibleStudents(cls,filter='all',noRepeat=true){
   const called=new Set(cls.called);
-  return cls.students.filter(s=>(filter==='all'||s.gender===filter)&&(!noRepeat||!called.has(s.id)));
+  return cls.students.filter(s=>studentMatchesFilter(s,filter)&&(!noRepeat||!called.has(s.id)));
 }
 export function recordDraw(cls,student,timestamp=new Date().toISOString()){
   if(!cls.called.includes(student.id))cls.called.push(student.id);
@@ -40,7 +59,7 @@ export function validateState(raw){
   const classes=raw.classes.map(c=>{
     if(!c||typeof c.id!=='string'||ids.has(c.id)||typeof c.name!=='string'||!c.name.trim()||!Array.isArray(c.students)||c.students.length>3000)throw new Error('班级数据不完整');
     ids.add(c.id);const studentIds=new Set();
-    const students=c.students.map(s=>{if(!s||typeof s.id!=='string'||studentIds.has(s.id)||typeof s.name!=='string'||!s.name.trim())throw new Error('学生数据不完整');studentIds.add(s.id);return{id:s.id,name:s.name.slice(0,100),gender:['male','female'].includes(s.gender)?s.gender:'unknown'};});
+    const students=c.students.map(s=>{if(!s||typeof s.id!=='string'||studentIds.has(s.id)||typeof s.name!=='string'||!s.name.trim())throw new Error('学生数据不完整');studentIds.add(s.id);return{id:s.id,name:s.name.slice(0,100),gender:['male','female'].includes(s.gender)?s.gender:'unknown',groups:Array.isArray(s.groups)?['A','B'].filter(g=>s.groups.includes(g)):[]};});
     return{id:c.id,name:c.name.trim().slice(0,40),students,called:Array.isArray(c.called)?[...new Set(c.called.filter(id=>studentIds.has(id)))]:[],round:Number.isSafeInteger(c.round)&&c.round>0?c.round:1,demo:!!c.demo,history:Array.isArray(c.history)?c.history.filter(h=>h&&typeof h.id==='string'&&typeof h.name==='string'&&typeof h.studentId==='string'&&Number.isSafeInteger(h.round)&&h.round>0&&Number.isFinite(Date.parse(h.time))).slice(0,500).map(h=>({id:h.id,name:h.name.slice(0,100),studentId:h.studentId,round:h.round,time:h.time})):[]};
   });
   return{version:1,classes,activeId:classes.some(c=>c.id===raw.activeId)?raw.activeId:classes[0]?.id||null,settings:{noRepeat:raw.settings?.noRepeat!==false,autoStop:raw.settings?.autoStop!==false,sound:raw.settings?.sound===true}};

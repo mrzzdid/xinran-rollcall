@@ -1,5 +1,5 @@
 import{FloatingPanel,floatingSupported}from'./floating.js';
-import{uid,randomIndex,parseNames,eligibleStudents,recordDraw,newRound,validateState,csvCell}from'./core.js';
+import{uid,randomIndex,parseNames,assignGroups,studentMatchesFilter,eligibleStudents,recordDraw,newRound,validateState,csvCell}from'./core.js';
 const $=id=>document.getElementById(id), KEY='shiming-classroom-v1';
 const icons={float:'<rect x="3" y="4" width="18" height="16" rx="3"/><rect x="11" y="11" width="8" height="6" rx="1"/>',spark:'<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/>',plus:'<path d="M12 5v14M5 12h14"/>',book:'<path d="M4 4h6c1 0 2 1 2 2v15c0-2-2-3-4-3H4zM20 4h-6c-1 0-2 1-2 2v15c0-2 2-3 4-3h4z"/>',play:'<path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/>',stop:'<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5.5 8a7 7 0 0 1 12-3L20 8M4 16l2.5 3a7 7 0 0 0 12-3"/>',expand:'<path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/>',edit:'<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14z"/>',search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',upload:'<path d="M12 16V4m-5 5 5-5 5 5M4 16v5h16v-5"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/>'};
 const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.book}</svg>`;
@@ -28,7 +28,8 @@ function renderSidebar(){
 function renderStats(){
  const c=active(),total=c?.students.length||0,called=c?.called.length||0;
  $('calledCount').textContent=called;$('remainingCount').textContent=total-called;$('progressText').textContent=`${called} / ${total}`;$('progressBar').style.width=`${total?called/total*100:0}%`;
- $('roundLabel').textContent=`第 ${pad(c?.round||1)} 轮`;$('poolLabel').textContent=`${pool().length} 位同学${state.settings.noRepeat?'待点名':'可抽取'}`;
+ $('activeClassName').textContent=(c?.name||'我的课堂')+(['A','B'].includes(filter)?` · ${filter} 组`:'');
+ $('roundLabel').textContent=`第 ${pad(c?.round||1)} 轮`;$('poolLabel').textContent=`${['A','B'].includes(filter)?filter+' 组 · ':''}${pool().length} 位同学${state.settings.noRepeat?'待点名':'可抽取'}`;
  $('drawButton').disabled=!rolling&&!pool().length;
  for(const id of ['noRepeat','autoStop','sound']){$(id).setAttribute('aria-checked',String(state.settings[id]));$(id).disabled=rolling;}
  $('fairnessNote').textContent=state.settings.noRepeat?'同一轮内不重复，让每个人都有机会':'可重复抽取，每次都从当前筛选名单中随机选择';
@@ -39,18 +40,20 @@ function renderStats(){
 }
 function renderRoster(){
  const c=active(),search=$('search').value.trim().toLowerCase(),called=new Set(c?.called||[]);
- $('rosterCount').textContent=`${c?.students.length||0} 人`;$('rosterHelp').textContent=c?.demo?'示例名单，可在「管理名单」中替换':'筛选仅影响抽取范围，搜索仅用于查找';
- const students=c?.students.map((s,i)=>({...s,index:i+1})).filter(s=>(filter==='all'||s.gender===filter)&&s.name.toLowerCase().includes(search))||[];
+ $('rosterCount').textContent=['A','B'].includes(filter)?`${filter} 组 · ${c?.students.filter(s=>studentMatchesFilter(s,filter)).length||0} 人`:`${c?.students.length||0} 人`;$('rosterHelp').textContent=c?.demo?'示例名单，可在「管理名单」中替换':'筛选仅影响抽取范围，搜索仅用于查找';
+ const students=c?.students.map((s,i)=>({...s,index:i+1})).filter(s=>(studentMatchesFilter(s,filter))&&s.name.toLowerCase().includes(search))||[];
  $('studentGrid').innerHTML=students.length?students.map(s=>`<div class="student-tile ${called.has(s.id)?'called':''} ${lastStudent?.id===s.id?'latest':''}" data-student="${escape(s.id)}" title="${escape(s.name)} · ${s.index} 号 · ${called.has(s.id)?'已点名':'待点名'}"><span class="student-number">${pad(s.index)}</span><span class="student-name">${escape(s.name)}</span>${called.has(s.id)?'<span class="student-check">✓</span>':''}</div>`).join(''):`<div class="empty-roster">${!c?'新建一个班级，开启你的课堂。':!c.students.length?'这里还没有学生，点击「管理名单」录入。':'没有找到符合条件的同学。'}</div>`;
 }
 function idleStage(){
  const c=active();$('drawCard').classList.remove('rolling','result');
  $('stageCaption').textContent=!c?'为新的课堂，留一个位置':c.students.length?'每一份精彩，都从一个名字开始':'每一堂课，都从认识彼此开始';
+ const emptyGroup=c&&['A','B'].includes(filter)&&!eligibleStudents(c,filter,false).length;
  const exhausted=!!c?.students.length&&!pool().length;
  $('nameDisplay').innerHTML=!c?'创建你的班级':!c.students.length?'添加第一位同学':exhausted?'这一轮，已完成':'准备好了吗<span class="name-question">？</span>';
- if(exhausted)$('nameDisplay').textContent=filter==='all'?'这一轮，已完成':'当前范围已点完';
+ if(exhausted)$('nameDisplay').textContent=emptyGroup?`${filter} 组还没有同学`:filter==='all'?'这一轮，已完成':'当前范围已点完';
  $('stageSubtitle').textContent=!c?'点击「新建班级」，录入同学的名字':!c.students.length?'点击「管理名单」，粘贴或导入学生姓名':exhausted?'切换筛选或开始新一轮，继续精彩互动':'点击下方按钮，开启今天的课堂互动';
- $('cardStatus').textContent=exhausted?'抽取范围已完成':'等待开始';syncFloating();
+ if(emptyGroup)$('stageSubtitle').textContent=`点击「管理名单」，在 ${filter} 组填写学生姓名后保存`;
+ $('cardStatus').textContent=emptyGroup?'请先设置分组名单':exhausted?'抽取范围已完成':'等待开始';syncFloating();
 }
 function renderAll(reset=true){
  const c=active();renderSidebar();$('breadcrumbClass').textContent=c?.name||'尚未创建班级';$('activeClassName').textContent=c?.name||'我的课堂';$('demoTag').hidden=!c?.demo;renderStats();renderRoster();if(reset)idleStage();syncFloating();
@@ -77,9 +80,14 @@ function ask(title,message,ok='确定'){
 }
 function closeConfirm(result){$('confirmDialog').close();confirmResolve?.(result);confirmResolve=null;}
 function openEditor(id){
- if(rolling)return;editingId=id;const c=state.classes.find(x=>x.id===id);$('editorTitle').textContent=c?'管理班级名单':'创建新班级';$('classNameInput').value=c?.name||'';$('namesInput').value=c?.students.map(s=>s.name+(s.gender==='male'?',男':s.gender==='female'?',女':'')).join('\n')||'';$('deleteClass').hidden=!c;updateEditorCount();$('editorDialog').showModal();
+ if(rolling)return;editingId=id;const c=state.classes.find(x=>x.id===id);$('editorTitle').textContent=c?'管理班级名单':'创建新班级';$('classNameInput').value=c?.name||'';$('namesInput').value=c?.students.map(s=>s.name+(s.gender==='male'?',男':s.gender==='female'?',女':'')).join('\n')||'';for(const group of ['A','B']){$('group'+group+'Input').value=c?.students.map((s,i)=>({s,i})).filter(({s})=>s.groups?.includes(group)).map(({s,i})=>c.students.filter(other=>other.name===s.name).length>1?`#${i+1} ${s.name}`:s.name).join('\n')||'';}
+ $('deleteClass').hidden=!c;updateEditorCount();$('editorDialog').showModal();
 }
-function updateEditorCount(){const parsed=parseNames($('namesInput').value);const names=new Set(parsed.map(s=>s.name));$('editorStatus').textContent=`已识别 ${parsed.length} 位同学${names.size<parsed.length?' · 含同名学生，将保留为独立学号':''}`;}
+function updateEditorCount(){
+ const parsed=parseNames($('namesInput').value);const names=new Set(parsed.map(s=>s.name));$('editorStatus').textContent=`已识别 ${parsed.length} 位同学${names.size<parsed.length?' · 含同名学生，将保留为独立学号':''}`;
+ try{const grouped=assignGroups(parsed,$('groupAInput').value,$('groupBInput').value);for(const group of ['A','B'])$('group'+group+'Count').textContent=grouped.filter(s=>s.groups.includes(group)).length+' 人';$('groupEditorStatus').textContent='';$('groupEditorStatus').classList.remove('invalid');}
+ catch(error){for(const group of ['A','B'])$('group'+group+'Count').textContent=parseNames($('group'+group+'Input').value).length+' 项';$('groupEditorStatus').textContent=error.message;$('groupEditorStatus').classList.add('invalid');}
+}
 function download(content,name,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
 function safeName(name){return name.replace(/[\\/:*?"<>|]/g,'_');}
 function dateStamp(){return new Date().toLocaleDateString('sv-SE');}
@@ -95,12 +103,12 @@ $('drawButton').addEventListener('click',startDraw);
 $('resetRound').addEventListener('click',async()=>{if(rolling||!active())return;const c=active();if(c.called.length&&!await ask('开始新一轮？','本轮已点状态将重置，历史点名记录会保留。','开始新一轮'))return;beginNewRound();notify(`已开始第 ${c.round} 轮点名`);});
 for(const id of ['noRepeat','autoStop','sound'])$(id).addEventListener('click',()=>{if(rolling)return;state.settings[id]=!state.settings[id];if(id==='sound')initAudio();persist();renderStats();if(id==='noRepeat'&&!lastStudent)idleStage();});
 $('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b||rolling)return;switchFilter(b.dataset.filter);});$('search').addEventListener('input',renderRoster);
-$('namesInput').addEventListener('input',updateEditorCount);
+for(const id of ['namesInput','groupAInput','groupBInput'])$(id).addEventListener('input',updateEditorCount);
 $('editorForm').addEventListener('submit',async e=>{
- e.preventDefault();const name=$('classNameInput').value.trim();if(!name){$('classNameInput').focus();return;}const students=parseNames($('namesInput').value);if(students.length>3000){notify('每个班级最多支持 3000 位同学');return;}
+ e.preventDefault();const name=$('classNameInput').value.trim();if(!name){$('classNameInput').focus();return;}let students;try{students=assignGroups(parseNames($('namesInput').value),$('groupAInput').value,$('groupBInput').value);}catch(error){updateEditorCount();notify(error.message);return;}if(students.length>3000){notify('每个班级最多支持 3000 位同学');return;}
  const c=state.classes.find(x=>x.id===editingId);const rosterChanged=c&&JSON.stringify(c.students.map(s=>[s.name,s.gender]))!==JSON.stringify(students.map(s=>[s.name,s.gender]));
  if(rosterChanged&&c.called.length&&!await ask('更新班级名单？','名单变化后将开始新一轮。已有点名记录仍会保留。','保存并更新'))return;
- if(c){c.name=name;if(rosterChanged){c.students=students;c.called=[];c.round+=c.history.length?1:0;}c.demo=false;state.activeId=c.id;}else{const n={id:uid(),name,students,called:[],history:[],round:1,demo:false};state.classes.push(n);state.activeId=n.id;}
+ if(c){c.name=name;if(rosterChanged){c.students=students;c.called=[];c.round+=c.history.length?1:0;}else{c.students=c.students.map((student,index)=>({...student,groups:students[index].groups}));}c.demo=false;state.activeId=c.id;}else{const n={id:uid(),name,students,called:[],history:[],round:1,demo:false};state.classes.push(n);state.activeId=n.id;}
  filter='all';lastStudent=null;$('search').value='';persist();$('editorDialog').close();resetButton();renderAll();notify(`已保存「${name}」`);
 });
 $('deleteClass').addEventListener('click',async()=>{const c=state.classes.find(x=>x.id===editingId);if(!c)return;if(!await ask('删除这个班级？',`「${c.name}」的名单和所有点名记录都将删除。你可以先导出全部数据备份。`,'删除班级'))return;state.classes=state.classes.filter(x=>x.id!==c.id);state.activeId=state.classes[0]?.id||null;lastStudent=null;filter='all';persist();$('editorDialog').close();resetButton();renderAll();notify('班级已删除');});
@@ -123,7 +131,7 @@ function cancelDraw(){
 }
 function beginNewRound(){if(rolling||!active())return;newRound(active());lastStudent=null;persist();resetButton();renderAll();}
 function switchClass(id){if(rolling||!state.classes.some(c=>c.id===id))return;state.activeId=id;filter='all';lastStudent=null;$('search').value='';persist();resetButton();renderAll();}
-function switchFilter(next){if(rolling||!['all','male','female'].includes(next))return;filter=next;lastStudent=null;resetButton();renderStats();renderRoster();idleStage();}
+function switchFilter(next){if(rolling||!['all','male','female','A','B'].includes(next))return;filter=next;lastStudent=null;resetButton();renderStats();renderRoster();idleStage();}
 function floatingSnapshot(){
  const c=active();return{classes:state.classes.map(c=>({id:c.id,name:c.name})),activeId:state.activeId,hasClass:!!c,filter,rolling,result:$('drawCard').classList.contains('result'),name:$('nameDisplay').textContent,caption:$('stageCaption').textContent,subtitle:$('stageSubtitle').textContent,round:c?.round||1,called:c?.called.length||0,total:c?.students.length||0,remaining:pool().length,noRepeat:state.settings.noRepeat};
 }
