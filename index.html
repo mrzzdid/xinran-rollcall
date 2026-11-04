@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f1f2f3"><meta name="description" content="鑫然点名器，一款简洁的课堂随机点名器。多班级管理、批量导入、同轮不重复，手机电脑都能用。">
+  <title>鑫然点名器 · 让每一个名字被看见</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23242629'/%3E%3Cpath d='M32 12v40M12 32h40M18 18l28 28M46 18L18 46' stroke='white' stroke-width='5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <button class="sidebar-scrim" id="scrim" aria-label="关闭班级菜单" hidden></button>
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="#" aria-label="鑫然点名器首页"><span class="brand-icon" data-icon="spark"></span><span>鑫然点名器<span class="brand-en">CLASSROOM</span></span></a>
+    <div class="sidebar-label">我的课堂 <span id="classCount">02</span></div>
+    <nav id="classList" aria-label="班级列表"></nav>
+    <button class="add-class" id="addClass"><span data-icon="plus"></span>新建班级</button>
+    <div class="sidebar-bottom">
+      <div class="sidebar-note"><span class="status-dot"></span><span id="storageStatus">数据保存在此浏览器</span></div>
+      <button class="sidebar-action" id="backup"><span data-icon="download"></span>导出全部数据</button>
+      <button class="sidebar-action" id="restore"><span data-icon="upload"></span>导入数据备份</button>
+      <div class="sidebar-foot">每一个名字，都值得被看见。</div>
+    </div>
+  </aside>
+  <button class="exit-focus button glass-button" id="exitFocus" aria-label="退出全屏展示"><span data-icon="close"></span>退出展示</button>
+  <main>
+    <header class="topbar">
+      <div class="breadcrumb"><button class="icon-button mobile-menu" id="menu" aria-label="打开班级菜单"><span data-icon="menu"></span></button><span>我的课堂</span><span class="slash">/</span><strong id="breadcrumbClass"></strong></div>
+      <div class="top-actions"><button class="button glass-button floating-entry" id="openFloating" title="打开独立置顶的点名窗口"><span data-icon="float"></span><span id="floatingButtonText">悬浮点名</span></button><button class="icon-button" id="fullscreen" title="全屏展示（F）" aria-label="切换全屏"><span data-icon="expand"></span></button></div>
+    </header>
+    <div class="content">
+      <section class="page-heading"><div><div class="eyebrow">A LITTLE CHANCE, A BIG MOMENT.</div><h1>今天，轮到谁？<span class="heading-star">✳</span></h1><p>让随机带来惊喜，让课堂多一点期待。</p></div><button class="button glass-button" id="editRoster"><span data-icon="edit"></span>管理名单</button></section>
+      <section class="workspace">
+        <div class="draw-column">
+          <div class="draw-card glass" id="drawCard">
+            <div class="card-top"><span class="class-pill"><span data-icon="book"></span><span id="activeClassName"></span><span class="demo-tag" id="demoTag">示例</span></span><span class="round-pill" id="roundLabel">第 01 轮</span></div>
+            <div class="draw-stage"><div class="stage-caption" id="stageCaption">每一份精彩，都从一个名字开始</div><div class="name-display" id="nameDisplay">准备好了吗<span class="name-question">？</span></div><div class="stage-subtitle" id="stageSubtitle">点击下方按钮，开启今天的课堂互动</div></div>
+            <div class="card-bottom"><span class="live-dot"></span><span id="cardStatus">等待开始</span><span class="bottom-line"></span><span id="poolLabel">24 位同学已就位</span></div>
+          </div>
+          <div class="draw-controls"><button class="button primary-button" id="drawButton"><span data-icon="play"></span><span id="drawButtonText">开始点名</span><kbd>Space</kbd></button><button class="button reset-button" id="resetRound" title="开始新一轮（N）"><span data-icon="refresh"></span>新一轮</button></div>
+          <div class="control-caption"><span data-icon="shield"></span><span id="fairnessNote">同一轮内不重复，让每个人都有机会</span></div>
+        </div>
+        <aside class="session-card glass">
+          <div class="section-title"><h2>课堂概览</h2><span class="tiny-label">THIS ROUND</span></div>
+          <div class="stats"><div><strong id="calledCount">0</strong><span>已点人数</span></div><span class="stats-divider"></span><div><strong id="remainingCount">24</strong><span>待点人数</span></div></div>
+          <div class="progress-track"><div id="progressBar"></div></div><div class="progress-label"><span>本轮进度</span><span id="progressText">0 / 24</span></div>
+          <div class="settings-section"><div class="setting-line"><span>不重复点名</span><button class="switch" id="noRepeat" role="switch" aria-checked="true" aria-label="不重复点名"><span></span></button></div><div class="setting-line"><span>自动定格 <small>约 2.5 秒</small></span><button class="switch" id="autoStop" role="switch" aria-checked="true" aria-label="自动定格"><span></span></button></div><div class="setting-line"><span>提示音</span><button class="switch" id="sound" role="switch" aria-checked="false" aria-label="提示音"><span></span></button></div></div>
+          <div class="recent-heading"><h3>最近点到</h3><button class="text-button" id="historyButton">全部记录 <span>↗</span></button></div><div id="recentList" class="recent-list"></div>
+          <div class="session-foot"><span data-icon="spark"></span>一点随机，发现更多可能。</div>
+        </aside>
+      </section>
+      <section class="roster-panel glass"><div class="roster-top"><div class="roster-title"><h2>班级名单</h2><span class="count-badge" id="rosterCount"></span></div><div class="roster-tools"><div class="filter-group" id="filters" aria-label="筛选学生"><button class="filter active" data-filter="all" aria-pressed="true">全部</button><button class="filter" data-filter="male" aria-pressed="false">男生</button><button class="filter" data-filter="female" aria-pressed="false">女生</button></div><label class="search-box"><span data-icon="search"></span><input id="search" type="search" aria-label="搜索学生姓名" placeholder="搜索姓名"></label></div></div><div class="roster-legend"><span><i class="legend-dot"></i>待点名</span><span><i class="legend-dot called"></i>已点名</span><span class="roster-help" id="rosterHelp">以下为示例名单，可在「管理名单」中替换</span></div><div id="studentGrid" class="student-grid"></div></section>
+      <footer class="footer"><span>鑫然点名器 <span class="footer-divider">/</span> 让每一个名字被看见</span><span>名单自动保存 · 手机与电脑自适应</span></footer>
+    </div>
+  </main>
+  <dialog id="floatingGuide" class="modal floating-guide"><div class="modal-heading"><div><div class="eyebrow">A SMALL WINDOW, MORE POSSIBILITIES.</div><h2>点名，不打断课堂。</h2></div><button class="icon-button" data-close aria-label="关闭"><span data-icon="close"></span></button></div><div class="floating-preview capsule-preview" aria-hidden="true"><div class="preview-capsule"><span>✳</span><i></i><span>点名</span><span>⌄</span></div><span>平时收起，需要时展开</span></div><p class="floating-intro" id="floatingGuideIntro">悬浮窗默认收起为小胶囊，点击才展开点名面板。</p><ol class="floating-steps"><li>先在网页录入班级名单，再点击「开启悬浮窗」。</li><li>切换到 PPT，点击小胶囊展开点名面板；结束后点「收起」。</li><li>保留原网页标签页；关闭网页会同时关闭悬浮窗。</li></ol><p class="floating-compat" id="floatingCompatibility">胶囊模式仍会保留浏览器外框及最小窗口尺寸，网页无法移除这些系统限制。建议使用电脑端 Chrome 或 Edge，并通过 HTTPS 网站打开。手机等不支持此功能的浏览器仍可在网页中正常点名。若 PPT 全屏遮挡悬浮窗，请在 PPT「设置幻灯片放映」中选择「观众自行浏览（窗口）」。</p><label class="prompt-choice"><input type="checkbox" id="showFloatingPrompt" checked>下次打开网页时提醒我</label><div class="modal-actions"><button class="button subtle-button" data-close>先管理名单</button><button class="button primary-small" id="launchFloating">开启悬浮窗</button></div><p id="floatingError" class="floating-error" role="status"></p></dialog>
+  <dialog id="editorDialog" class="modal"><form id="editorForm"><div class="modal-heading"><div><div class="eyebrow">YOUR CLASSROOM</div><h2 id="editorTitle">管理班级名单</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><span data-icon="close"></span></button></div><label class="field-label" for="classNameInput">班级名称</label><input id="classNameInput" class="field" maxlength="40" required placeholder="例如：数字媒体 1 班"><div class="label-line"><label class="field-label" for="namesInput">学生名单</label><button type="button" class="text-button" id="importRoster"><span data-icon="upload"></span>导入 TXT / CSV</button></div><textarea id="namesInput" class="field names-input" placeholder="每行一位同学，例如：&#10;张三,男&#10;李四,女&#10;Alex Chen&#10;&#10;也可以只填写姓名，性别为选填。"></textarea><p class="field-hint">每行一个姓名，或用中文逗号、顿号分隔。填写性别时，请用「姓名,男」或「姓名,女」。支持同名学生，按行分配独立学号。</p><div class="editor-status" id="editorStatus"></div><div class="modal-actions"><button type="button" class="text-button danger" id="deleteClass">删除班级</button><div><button type="button" class="button subtle-button" data-close>取消</button><button type="submit" class="button primary-small">保存名单</button></div></div></form></dialog>
+  <dialog id="historyDialog" class="modal"><div class="modal-heading"><div><div class="eyebrow">CLASSROOM MOMENTS</div><h2>点名记录</h2></div><button class="icon-button" data-close aria-label="关闭"><span data-icon="close"></span></button></div><p class="field-hint" id="historyDescription"></p><div id="historyList" class="history-list"></div><div class="modal-actions"><span class="field-hint">每班最多保存 500 条记录</span><button class="button glass-button" id="exportHistory"><span data-icon="download"></span>导出 CSV</button></div></dialog>
+  <dialog id="confirmDialog" class="modal confirm-modal"><h2 id="confirmTitle"></h2><p id="confirmText"></p><div class="modal-actions"><button class="button subtle-button" id="confirmCancel">取消</button><button class="button primary-small" id="confirmOk">确定</button></div></dialog>
+  <input type="file" id="rosterFile" accept=".txt,.csv,text/plain,text/csv" hidden><input type="file" id="backupFile" accept=".json,application/json" hidden>
+  <div id="toast" class="toast" role="status"></div><div id="announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
